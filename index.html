@@ -98,7 +98,7 @@
 
         <!-- Interactive Graphs -->
         <div class="chart-container">
-            <div class="chart-title">Temperature History (°C)</div>
+            <div class="chart-title">Temperature History (°F)</div>
             <div id="temp-chart"></div>
         </div>
 
@@ -184,7 +184,7 @@
                     cardsContainer.innerHTML += `
                         <div class="card">
                             <h2>${divName}</h2>
-                            <div class="metric temp">${parseFloat(data.temperature).toFixed(1)}°C</div>
+                            <div class="metric temp">${parseFloat(data.temperature).toFixed(1)}°F</div>
                             <div class="metric hum">${parseFloat(data.humidity).toFixed(1)}% RH</div>
                             <div class="time">Last Update: ${localTime}</div>
                         </div>

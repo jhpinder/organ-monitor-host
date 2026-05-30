@@ -1,110 +1,214 @@
-<!-- Include ApexCharts.js from a free CDN -->
-<script src="https://jsdelivr.net"></script>
+<!DOCTYPE html>
+<html lang="en">
 
-<style>
-    .organ-dashboard-container { max-width: 1000px; margin: 0 auto; padding: 20px; font-family: sans-serif; }
-    .organ-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px; }
-    .organ-card { background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); text-align: center; border: 1px solid #eaeaea; }
-    .organ-card h2 { margin: 0 0 15px 0 !important; font-size: 1.1rem !important; color: #2c3e50 !important; border-bottom: 2px solid #f4f6f9; padding-bottom: 10px; font-weight: 600; }
-    .organ-metric { font-size: 1.8rem; font-weight: bold; margin: 8px 0; }
-    .organ-temp { color: #e74c3c; }
-    .organ-hum { color: #3498db; }
-    .organ-time { font-size: 0.75rem; color: #95a5a6; margin-top: 10px; }
-    .organ-chart-container { background: #ffffff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 30px; border: 1px solid #eaeaea; }
-    .organ-chart-title { font-size: 1.2rem; color: #2c3e50; margin-bottom: 15px; font-weight: 600; text-align: left; }
-</style>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pipe Organ Climate Dashboard</title>
 
-<div class="organ-dashboard-container">
-    <!-- Live Status Cards -->
-    <div class="organ-grid" id="cards-container">Loading current organ data...</div>
+    <!-- Robust external charting library (Bypassing jsDelivr) -->
+    <script src="https://unpkg.com/apexcharts@latest"></script>
 
-    <!-- Interactive Graphs -->
-    <div class="organ-chart-container">
-        <div class="organ-chart-title">Temperature History (°C)</div>
-        <div id="temp-chart"></div>
-    </div>
-
-    <div class="organ-chart-container">
-        <div class="organ-chart-title">Relative Humidity History (% RH)</div>
-        <div id="hum-chart"></div>
-    </div>
-</div>
-
-<script>
-    const api_url = "https://script.google.com/macros/s/AKfycbw-9631agTzhb_mYkMPmguMSgZcPmyXpnIBo-anZpwPxiQwvTh3s3fHdlIb45SIN6Ieaw/exec";
-
-    let tempChart, humChart;
-
-    const baseOptions = {
-        chart: { type: 'line', height: 350, zoom: { enabled: true }, toolbar: { autoSelected: 'zoom' } },
-        stroke: { curve: 'smooth', width: 3 },
-        xaxis: { type: 'datetime' },
-        tooltip: { x: { format: 'dd MMM yyyy HH:mm' } },
-        noData: { text: 'Loading data timeline...' }
-    };
-
-    function initCharts() {
-        tempChart = new ApexCharts(document.querySelector("#temp-chart"), { ...baseOptions, series: [] });
-        humChart = new ApexCharts(document.querySelector("#hum-chart"), { ...baseOptions, series: [] });
-        tempChart.render();
-        humChart.render();
-    }
-
-    async function updateDashboard() {
-        try {
-            const response = await fetch(api_url);
-            const rawData = await response.json();
-            if (rawData.length === 0) return;
-
-            const grouped = {};
-            const latestReadings = {}; 
-
-            rawData.forEach(row => {
-                const div = row.division;
-                const timestamp = new Date(row.timestamp).getTime();
-
-                if (!grouped[div]) {
-                    grouped[div] = { tempSeries: [], humSeries: [] };
-                }
-                
-                grouped[div].tempSeries.push([timestamp, parseFloat(row.temperature)]);
-                grouped[div].humSeries.push([timestamp, parseFloat(row.humidity)]);
-                
-                latestReadings[div] = row; 
-            });
-
-            const cardsContainer = document.getElementById('cards-container');
-            cardsContainer.innerHTML = '';
-            for (const [divName, data] of Object.entries(latestReadings)) {
-                const localTime = new Date(data.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                cardsContainer.innerHTML += `
-                    <div class="organ-card">
-                        <h2>${divName}</h2>
-                        <div class="organ-metric organ-temp">${parseFloat(data.temperature).toFixed(1)}°C</div>
-                        <div class="organ-metric organ-hum">${parseFloat(data.humidity).toFixed(1)}% RH</div>
-                        <div class="organ-time">Last Update: ${localTime}</div>
-                    </div>
-                `;
-            }
-
-            const finalTempSeries = [];
-            const finalHumSeries = [];
-
-            for (const [divName, seriesData] of Object.entries(grouped)) {
-                finalTempSeries.push({ name: divName, data: seriesData.tempSeries });
-                finalHumSeries.push({ name: divName, data: seriesData.humSeries });
-            }
-
-            tempChart.updateSeries(finalTempSeries);
-            humChart.updateSeries(finalHumSeries);
-
-        } catch (error) {
-            console.error("Dashboard error:", error);
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f4f6f9;
+            margin: 0;
+            padding: 20px;
+            color: #333;
         }
-    }
 
-    // Execute when block mounts
-    initCharts();
-    updateDashboard();
-    setInterval(updateDashboard, 60000);
-</script>
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .card h2 {
+            margin: 0 0 15px 0;
+            font-size: 1.1rem;
+            color: #34495e;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+        }
+
+        .metric {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+
+        .temp {
+            color: #e74c3c;
+        }
+
+        .hum {
+            color: #3498db;
+        }
+
+        .time {
+            font-size: 0.75rem;
+            color: #95a5a6;
+            margin-top: 10px;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        .chart-title {
+            font-size: 1.2rem;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Pipe Organ Climate Monitor</h1>
+
+        <!-- Live Status Cards -->
+        <div class="grid" id="cards-container">Loading current readings...</div>
+
+        <!-- Interactive Graphs -->
+        <div class="chart-container">
+            <div class="chart-title">Temperature History (°C)</div>
+            <div id="temp-chart"></div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-title">Relative Humidity History (% RH)</div>
+            <div id="hum-chart"></div>
+        </div>
+    </div>
+
+    <script>
+        const api_url = "https://script.google.com/macros/s/AKfycbw-9631agTzhb_mYkMPmguMSgZcPmyXpnIBo-anZpwPxiQwvTh3s3fHdlIb45SIN6Ieaw/exec";
+
+        let tempChart, humChart;
+
+        // Baseline global setup configurations for the charts
+        const baseOptions = {
+            chart: {
+                type: 'line',
+                height: 350,
+                zoom: { enabled: true },
+                toolbar: { autoSelected: 'zoom' }
+            },
+            stroke: {
+                curve: 'smooth',
+                width: 3
+            },
+            xaxis: {
+                type: 'datetime'
+            },
+            tooltip: {
+                x: { format: 'dd MMM yyyy HH:mm' }
+            },
+            noData: {
+                text: 'Loading data timeline...'
+            }
+        };
+
+        // Instantiates the charts immediately so they have placeholder containers
+        function initCharts() {
+            tempChart = new ApexCharts(document.querySelector("#temp-chart"), { ...baseOptions, series: [] });
+            humChart = new ApexCharts(document.querySelector("#hum-chart"), { ...baseOptions, series: [] });
+            tempChart.render();
+            humChart.render();
+        }
+
+        // Pulls the payload from your Google Sheets backend and parses it
+        async function updateDashboard() {
+            try {
+                const response = await fetch(api_url);
+                const rawData = await response.json();
+                if (!rawData || rawData.length === 0) return;
+
+                const grouped = {};
+                const latestReadings = {};
+
+                // Step 1: Parse the database payload into logical arrays matching each organ division
+                rawData.forEach(row => {
+                    const div = row.division;
+                    const timestamp = new Date(row.timestamp).getTime();
+
+                    if (!grouped[div]) {
+                        grouped[div] = { tempSeries: [], humSeries: [] };
+                    }
+
+                    grouped[div].tempSeries.push([timestamp, parseFloat(row.temperature)]);
+                    grouped[div].humSeries.push([timestamp, parseFloat(row.humidity)]);
+
+                    latestReadings[div] = row;
+                });
+
+                // Step 2: Render the top numeric overview metrics cards dynamically
+                const cardsContainer = document.getElementById('cards-container');
+                cardsContainer.innerHTML = '';
+                for (const [divName, data] of Object.entries(latestReadings)) {
+                    const localTime = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    cardsContainer.innerHTML += `
+                        <div class="card">
+                            <h2>${divName}</h2>
+                            <div class="metric temp">${parseFloat(data.temperature).toFixed(1)}°C</div>
+                            <div class="metric hum">${parseFloat(data.humidity).toFixed(1)}% RH</div>
+                            <div class="time">Last Update: ${localTime}</div>
+                        </div>
+                    `;
+                }
+
+                // Step 3: Map data arrays to the structures ApexCharts expects
+                const finalTempSeries = [];
+                const finalHumSeries = [];
+
+                for (const [divName, seriesData] of Object.entries(grouped)) {
+                    finalTempSeries.push({ name: divName, data: seriesData.tempSeries });
+                    finalHumSeries.push({ name: divName, data: seriesData.humSeries });
+                }
+
+                // Step 4: Safely push updates into the running chart layouts
+                tempChart.updateSeries(finalTempSeries);
+                humChart.updateSeries(finalHumSeries);
+
+            } catch (error) {
+                console.error("Failed to parse and update ecosystem dashboard:", error);
+            }
+        }
+
+        // Program entry execution path
+        initCharts();
+        updateDashboard();
+
+        // Triggers database polling every 60 seconds matching your sensor intervals
+        setInterval(updateDashboard, 60000); 
+    </script>
+</body>
+
+</html>

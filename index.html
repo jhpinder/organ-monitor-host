@@ -109,7 +109,9 @@
     </div>
 
     <script>
-        const api_url = "https://script.google.com/macros/s/AKfycbw-9631agTzhb_mYkMPmguMSgZcPmyXpnIBo-anZpwPxiQwvTh3s3fHdlIb45SIN6Ieaw/exec";
+        const SUPABASE_URL = "https://sznzzwysufjtcdffpqyt.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_p0xdgh2W1-grml_nsFsuRA_Px5QLBvp";
+        const api_url = `${SUPABASE_URL}/rest/v1/env-logs?select=*&order=created_at.asc`;
 
         let tempChart, humChart;
 
@@ -147,7 +149,12 @@
         // Pulls the payload from your Google Sheets backend and parses it
         async function updateDashboard() {
             try {
-                const response = await fetch(api_url);
+                const response = await fetch(api_url, {
+                    headers: {
+                        "apikey": SUPABASE_ANON_KEY,
+                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+                    }
+                });
                 const rawData = await response.json();
                 if (!rawData || rawData.length === 0) return;
 
@@ -156,8 +163,8 @@
 
                 // Step 1: Parse the database payload into logical arrays matching each organ division
                 rawData.forEach(row => {
-                    const div = row.division;
-                    const timestamp = new Date(row.timestamp).getTime();
+                    const div = row.div_name;
+                    const timestamp = new Date(row.created_at).getTime();
 
                     // If this division hasn't been seen yet, initialize its arrays
                     if (!grouped[div]) {
@@ -165,8 +172,8 @@
                     }
 
                     // Push data points into the respective division arrays
-                    grouped[div].tempSeries.push([timestamp, parseFloat(row.temperature)]);
-                    grouped[div].humSeries.push([timestamp, parseFloat(row.humidity)]);
+                    grouped[div].tempSeries.push([timestamp, parseFloat(row.temp)]);
+                    grouped[div].humSeries.push([timestamp, parseFloat(row.hum)]);
 
                     // Track the single absolute latest reading for the metric cards
                     latestReadings[div] = row;
@@ -180,12 +187,12 @@
                 const divisionNames = Object.keys(latestReadings);
                 divisionNames.forEach(divName => {
                     const data = latestReadings[divName];
-                    const localTime = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const localTime = new Date(data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     cardsContainer.innerHTML += `
                         <div class="card">
                             <h2>${divName}</h2>
-                            <div class="metric temp">${parseFloat(data.temperature).toFixed(1)}°F</div>
-                            <div class="metric hum">${parseFloat(data.humidity).toFixed(1)}% RH</div>
+                            <div class="metric temp">${parseFloat(data.temp).toFixed(1)}°F</div>
+                            <div class="metric hum">${parseFloat(data.hum).toFixed(1)}% RH</div>
                             <div class="time">Last Update: ${localTime}</div>
                         </div>
                     `;

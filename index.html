@@ -159,20 +159,27 @@
                     const div = row.division;
                     const timestamp = new Date(row.timestamp).getTime();
 
+                    // If this division hasn't been seen yet, initialize its arrays
                     if (!grouped[div]) {
                         grouped[div] = { tempSeries: [], humSeries: [] };
                     }
 
+                    // Push data points into the respective division arrays
                     grouped[div].tempSeries.push([timestamp, parseFloat(row.temperature)]);
                     grouped[div].humSeries.push([timestamp, parseFloat(row.humidity)]);
 
+                    // Track the single absolute latest reading for the metric cards
                     latestReadings[div] = row;
                 });
 
                 // Step 2: Render the top numeric overview metrics cards dynamically
                 const cardsContainer = document.getElementById('cards-container');
                 cardsContainer.innerHTML = '';
-                for (const [divName, data] of Object.entries(latestReadings)) {
+
+                // Explicitly pull keys to prevent browser looping bugs
+                const divisionNames = Object.keys(latestReadings);
+                divisionNames.forEach(divName => {
+                    const data = latestReadings[divName];
                     const localTime = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                     cardsContainer.innerHTML += `
                         <div class="card">
@@ -182,18 +189,25 @@
                             <div class="time">Last Update: ${localTime}</div>
                         </div>
                     `;
-                }
+                });
 
                 // Step 3: Map data arrays to the structures ApexCharts expects
                 const finalTempSeries = [];
                 const finalHumSeries = [];
 
-                for (const [divName, seriesData] of Object.entries(grouped)) {
-                    finalTempSeries.push({ name: divName, data: seriesData.tempSeries });
-                    finalHumSeries.push({ name: divName, data: seriesData.humSeries });
-                }
+                // Correctly iterate through all grouped divisions to build multiple lines
+                Object.keys(grouped).forEach(divName => {
+                    finalTempSeries.push({
+                        name: divName,
+                        data: grouped[divName].tempSeries
+                    });
+                    finalHumSeries.push({
+                        name: divName,
+                        data: grouped[divName].humSeries
+                    });
+                });
 
-                // Step 4: Safely push updates into the running chart layouts
+                // Step 4: Safely push all lines into the running chart layouts simultaneously
                 tempChart.updateSeries(finalTempSeries);
                 humChart.updateSeries(finalHumSeries);
 
@@ -201,6 +215,7 @@
                 console.error("Failed to parse and update ecosystem dashboard:", error);
             }
         }
+
 
         // Program entry execution path
         initCharts();
